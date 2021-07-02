@@ -31,6 +31,6 @@ main() {
   // 解析 swagger properties 节点中的字段说明
   Map<String, String> properties = classGenerator.parseToProperties(jsonNoteData);
 
-  DartCode dartCode = classGenerator.generateDartClasses(jsonRawData, properties);
+  DartCode dartCode = classGenerator.generateDartClasses(jsonRawData, properties, nullSafety);
   print(dartCode.code);
 }

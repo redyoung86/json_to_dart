@@ -39,7 +39,7 @@ class ModelGenerator {
     return this.hints.firstWhere((h) => h.path == path, orElse: () => null);
   }
 
-  List<Warning> _generateClassDefinition(String className, dynamic jsonRawDynamicData, String path, Node astNode, [Map<String, String> properties]) {
+  List<Warning> _generateClassDefinition(String className, dynamic jsonRawDynamicData, String path, Node astNode, [Map<String, String> properties, bool nullSafety]) {
     List<Warning> warnings = <Warning>[];
     if (jsonRawDynamicData is List) {
       // if first element is an array, start in the first element.
@@ -54,7 +54,7 @@ class ModelGenerator {
         _properties = properties;
       }
 
-      ClassDefinition classDefinition = new ClassDefinition(className, _privateFields);
+      ClassDefinition classDefinition = new ClassDefinition(className, _privateFields, nullSafety);
       keys.forEach((key) {
         TypeDefinition typeDef;
         final hint = _hintForPath('$path/$key');
@@ -110,11 +110,11 @@ class ModelGenerator {
               toAnalyze = jsonRawData[dependency.name][0];
             }
             final node = navigateNode(astNode, dependency.name);
-            warns = _generateClassDefinition(dependency.className, toAnalyze, '$path/${dependency.name}', node, properties);
+            warns = _generateClassDefinition(dependency.className, toAnalyze, '$path/${dependency.name}', node, properties, nullSafety);
           }
         } else {
           final node = navigateNode(astNode, dependency.name);
-          warns = _generateClassDefinition(dependency.className, jsonRawData[dependency.name], '$path/${dependency.name}', node, properties);
+          warns = _generateClassDefinition(dependency.className, jsonRawData[dependency.name], '$path/${dependency.name}', node, properties, nullSafety);
         }
         if (warns != null) {
           warnings.addAll(warns);
@@ -151,10 +151,10 @@ class ModelGenerator {
   /// in a single string. The [rawJson] param is assumed to be a properly
   /// formatted JSON string. The dart code is not validated so invalid dart code
   /// might be returned
-  DartCode generateUnsafeDart(String rawJson, [Map<String, String> properties]) {
+  DartCode generateUnsafeDart(String rawJson, [Map<String, String> properties, bool nullSafety = false]) {
     final jsonRawData = decodeJSON(rawJson);
     final astNode = parse(rawJson, Settings());
-    List<Warning> warnings = _generateClassDefinition(_rootClassName, jsonRawData, "", astNode, properties);
+    List<Warning> warnings = _generateClassDefinition(_rootClassName, jsonRawData, "", astNode, properties, nullSafety);
     // after generating all classes, replace the omited similar classes.
     allClasses.forEach((c) {
       final fieldsKeys = c.fields.keys;
@@ -171,8 +171,8 @@ class ModelGenerator {
   /// generateDartClasses will generate all classes and append one after another
   /// in a single string. The [rawJson] param is assumed to be a properly
   /// formatted JSON string. If the generated dart is invalid it will throw an error.
-  DartCode generateDartClasses(String rawJson, [Map<String, String> properties]) {
-    final unsafeDartCode = generateUnsafeDart(rawJson, properties);
+  DartCode generateDartClasses(String rawJson, [Map<String, String> properties, bool nullSafety]) {
+    final unsafeDartCode = generateUnsafeDart(rawJson, properties, nullSafety);
     final formatter = new DartFormatter();
     return new DartCode(formatter.format(unsafeDartCode.code), unsafeDartCode.warnings);
   }

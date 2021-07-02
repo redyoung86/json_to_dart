@@ -89,16 +89,22 @@ class TypeDefinition {
 
   bool get isPrimitiveList => _isPrimitive && name == 'List';
 
-  String _buildParseClass(String expression) {
+  String _buildParseClass(String expression, [bool nullSafety = false]) {
     final properType = subtype != null ? subtype : name;
+    if (nullSafety) {
+      return ' $properType.fromJson($expression)';
+    }
     return 'new $properType.fromJson($expression)';
   }
 
-  String _buildToJsonClass(String expression) {
+  String _buildToJsonClass(String expression, [bool nullSafety = false]) {
+    if (nullSafety) {
+      return '$expression?.toJson()';
+    }
     return '$expression.toJson()';
   }
 
-  String jsonParseExpression(String key, bool privateField) {
+  String jsonParseExpression(String key, bool privateField, [bool nullSafety = false]) {
     final jsonKey = "json['$key']";
     final fieldKey = fixFieldName(key, typeDef: this, privateField: privateField);
     if (isPrimitive) {
@@ -112,27 +118,40 @@ class TypeDefinition {
       return "$fieldKey = DateTime.tryParse(json['$key']);";
     } else if (name == 'List') {
       // list of class
+      if (nullSafety) {
+        return "if (json['$key'] != null) {\n\t\t\t$fieldKey = <$subtype>[];\n\t\t\tjson['$key'].forEach((v) { $fieldKey?.add( $subtype.fromJson(v)); });\n\t\t}";
+      }
       return "if (json['$key'] != null) {\n\t\t\t$fieldKey = new List<$subtype>();\n\t\t\tjson['$key'].forEach((v) { $fieldKey.add(new $subtype.fromJson(v)); });\n\t\t}";
     } else {
       // class
-      return "$fieldKey = json['$key'] != null ? ${_buildParseClass(jsonKey)} : null;";
+      return "$fieldKey = json['$key'] != null ? ${_buildParseClass(jsonKey, nullSafety)} : null;";
     }
   }
 
-  String toJsonExpression(String key, bool privateField) {
+  String toJsonExpression(String key, bool privateField, [bool nullSafety = false]) {
     final fieldKey = fixFieldName(key, typeDef: this, privateField: privateField);
     final thisKey = 'this.$fieldKey';
     if (isPrimitive) {
       return "data['$key'] = $thisKey;";
     } else if (name == 'List') {
       // class list
+      if (nullSafety) {
+        return """if ($thisKey != null) {
+      data['$key'] = $thisKey?.map((v) => ${_buildToJsonClass('v')}).toList();
+    }""";
+      }
       return """if ($thisKey != null) {
       data['$key'] = $thisKey.map((v) => ${_buildToJsonClass('v')}).toList();
     }""";
     } else {
       // class
+      if (nullSafety) {
+        return """
+          data['$key'] = ${_buildToJsonClass(thisKey, nullSafety)};
+        """;
+      }
       return """if ($thisKey != null) {
-      data['$key'] = ${_buildToJsonClass(thisKey)};
+      data['$key'] = ${_buildToJsonClass(thisKey, nullSafety)};
     }""";
     }
   }
@@ -150,10 +169,12 @@ class Dependency {
 class ClassDefinition {
   final String _name;
   final bool _privateFields;
+  final bool _nullSafety; //是否空值安全
   final Map<String, TypeDefinition> fields = new Map<String, TypeDefinition>();
 
   String get name => _name;
   bool get privateFields => _privateFields;
+  bool get nullSafety => _nullSafety;
 
   List<Dependency> get dependencies {
     final dependenciesList = <Dependency>[];
@@ -167,7 +188,7 @@ class ClassDefinition {
     return dependenciesList;
   }
 
-  ClassDefinition(this._name, [this._privateFields = false]);
+  ClassDefinition(this._name, [this._privateFields = false, this._nullSafety = false]);
 
   bool operator ==(other) {
     if (other is ClassDefinition) {
@@ -210,6 +231,8 @@ class ClassDefinition {
   }
 
   String get _fieldList {
+    print("nullSafety==" + nullSafety.toString());
+
     return fields.keys.map((key) {
       final f = fields[key];
       final fieldName = fixFieldName(key, typeDef: f, privateField: privateFields);
@@ -220,9 +243,18 @@ class ClassDefinition {
       if (f?.description != null) {
         sb.write('/// ${f.description} \n');
       }
+      if (nullSafety) {
+        //sb.write(' late ');
+      }
 
       _addTypeDef(f, sb);
-      sb.write(' $fieldName;');
+      if (nullSafety) {
+        //sb.write(' late ');
+        sb.write('? $fieldName;');
+      } else {
+        sb.write(' $fieldName;');
+      }
+
       return sb.toString();
     }).join('\n');
   }
@@ -291,7 +323,7 @@ class ClassDefinition {
     sb.write('\t$name');
     sb.write('.fromJson(Map<String, dynamic> json) {\n');
     fields.keys.forEach((k) {
-      sb.write('\t\t${fields[k].jsonParseExpression(k, privateFields)}\n');
+      sb.write('\t\t${fields[k].jsonParseExpression(k, privateFields, nullSafety)}\n');
     });
     sb.write('\t}');
     return sb.toString();
@@ -299,9 +331,15 @@ class ClassDefinition {
 
   String get _jsonGenFunc {
     final sb = new StringBuffer();
-    sb.write('\tMap<String, dynamic> toJson() {\n\t\tfinal Map<String, dynamic> data = new Map<String, dynamic>();\n');
+
+    if (nullSafety) {
+      sb.write('\tMap<String, dynamic> toJson() {\n\t\tfinal Map<String, dynamic> data = <String, dynamic>{};\n');
+    } else {
+      sb.write('\tMap<String, dynamic> toJson() {\n\t\tfinal Map<String, dynamic> data = new Map<String, dynamic>();\n');
+    }
+
     fields.keys.forEach((k) {
-      sb.write('\t\t${fields[k].toJsonExpression(k, privateFields)}\n');
+      sb.write('\t\t${fields[k].toJsonExpression(k, privateFields, nullSafety)}\n');
     });
     sb.write('\t\treturn data;\n');
     sb.write('\t}');
@@ -312,6 +350,10 @@ class ClassDefinition {
     if (privateFields) {
       return 'class $name {\n$_fieldList\n\n$_defaultPrivateConstructor\n\n$_gettersSetters\n\n$_jsonParseFunc\n\n$_jsonGenFunc\n}\n';
     } else {
+      if (nullSafety) {
+        // 不实用构造方法
+        return 'class $name {\n$_fieldList\n\n$_jsonParseFunc\n\n$_jsonGenFunc\n}\n';
+      }
       return 'class $name {\n$_fieldList\n\n$_defaultConstructor\n\n$_jsonParseFunc\n\n$_jsonGenFunc\n}\n';
     }
   }

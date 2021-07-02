@@ -37,6 +37,9 @@ class TypeDefinition {
   bool isAmbiguous = false;
   bool _isPrimitive = false;
 
+  // 属性描述
+  String description;
+
   factory TypeDefinition.fromDynamic(dynamic obj, Node astNode) {
     bool isAmbiguous = false;
     final type = getTypeName(obj);
@@ -55,13 +58,12 @@ class TypeDefinition {
         // when array is empty insert Null just to warn the user
         elemType = "Null";
       }
-      return new TypeDefinition(type,
-          astNode: astNode, subtype: elemType, isAmbiguous: isAmbiguous);
+      return new TypeDefinition(type, astNode: astNode, subtype: elemType, isAmbiguous: isAmbiguous);
     }
     return new TypeDefinition(type, astNode: astNode, isAmbiguous: isAmbiguous);
   }
 
-  TypeDefinition(this.name, {this.subtype, this.isAmbiguous, Node astNode}) {
+  TypeDefinition(this.name, {this.subtype, this.isAmbiguous, Node astNode, this.description}) {
     if (subtype == null) {
       _isPrimitive = isPrimitiveType(this.name);
       if (this.name == 'int' && isASTLiteralDouble(astNode)) {
@@ -78,10 +80,7 @@ class TypeDefinition {
   bool operator ==(other) {
     if (other is TypeDefinition) {
       TypeDefinition otherTypeDef = other;
-      return this.name == otherTypeDef.name &&
-          this.subtype == otherTypeDef.subtype &&
-          this.isAmbiguous == otherTypeDef.isAmbiguous &&
-          this._isPrimitive == otherTypeDef._isPrimitive;
+      return this.name == otherTypeDef.name && this.subtype == otherTypeDef.subtype && this.isAmbiguous == otherTypeDef.isAmbiguous && this._isPrimitive == otherTypeDef._isPrimitive;
     }
     return false;
   }
@@ -101,8 +100,7 @@ class TypeDefinition {
 
   String jsonParseExpression(String key, bool privateField) {
     final jsonKey = "json['$key']";
-    final fieldKey =
-        fixFieldName(key, typeDef: this, privateField: privateField);
+    final fieldKey = fixFieldName(key, typeDef: this, privateField: privateField);
     if (isPrimitive) {
       if (name == "List") {
         return "$fieldKey = json['$key'].cast<$subtype>();";
@@ -122,8 +120,7 @@ class TypeDefinition {
   }
 
   String toJsonExpression(String key, bool privateField) {
-    final fieldKey =
-        fixFieldName(key, typeDef: this, privateField: privateField);
+    final fieldKey = fixFieldName(key, typeDef: this, privateField: privateField);
     final thisKey = 'this.$fieldKey';
     if (isPrimitive) {
       return "data['$key'] = $thisKey;";
@@ -159,7 +156,7 @@ class ClassDefinition {
   bool get privateFields => _privateFields;
 
   List<Dependency> get dependencies {
-    final dependenciesList = new List<Dependency>();
+    final dependenciesList = <Dependency>[];
     final keys = fields.keys;
     keys.forEach((k) {
       final f = fields[k];
@@ -198,9 +195,7 @@ class ClassDefinition {
   }
 
   hasField(TypeDefinition otherField) {
-    return fields.keys
-            .firstWhere((k) => fields[k] == otherField, orElse: () => null) !=
-        null;
+    return fields.keys.firstWhere((k) => fields[k] == otherField, orElse: () => null) != null;
   }
 
   addField(String name, TypeDefinition typeDef) {
@@ -217,10 +212,15 @@ class ClassDefinition {
   String get _fieldList {
     return fields.keys.map((key) {
       final f = fields[key];
-      final fieldName =
-          fixFieldName(key, typeDef: f, privateField: privateFields);
+      final fieldName = fixFieldName(key, typeDef: f, privateField: privateFields);
       final sb = new StringBuffer();
       sb.write('\t');
+
+      // 添加说明
+      if (f?.description != null) {
+        sb.write('/// ${f.description} \n');
+      }
+
       _addTypeDef(f, sb);
       sb.write(' $fieldName;');
       return sb.toString();
@@ -230,15 +230,12 @@ class ClassDefinition {
   String get _gettersSetters {
     return fields.keys.map((key) {
       final f = fields[key];
-      final publicFieldName =
-          fixFieldName(key, typeDef: f, privateField: false);
-      final privateFieldName =
-          fixFieldName(key, typeDef: f, privateField: true);
+      final publicFieldName = fixFieldName(key, typeDef: f, privateField: false);
+      final privateFieldName = fixFieldName(key, typeDef: f, privateField: true);
       final sb = new StringBuffer();
       sb.write('\t');
       _addTypeDef(f, sb);
-      sb.write(
-          ' get $publicFieldName => $privateFieldName;\n\tset $publicFieldName(');
+      sb.write(' get $publicFieldName => $privateFieldName;\n\tset $publicFieldName(');
       _addTypeDef(f, sb);
       sb.write(' $publicFieldName) => $privateFieldName = $publicFieldName;');
       return sb.toString();
@@ -252,8 +249,7 @@ class ClassDefinition {
     var len = fields.keys.length - 1;
     fields.keys.forEach((key) {
       final f = fields[key];
-      final publicFieldName =
-          fixFieldName(key, typeDef: f, privateField: false);
+      final publicFieldName = fixFieldName(key, typeDef: f, privateField: false);
       _addTypeDef(f, sb);
       sb.write(' $publicFieldName');
       if (i != len) {
@@ -264,10 +260,8 @@ class ClassDefinition {
     sb.write('}) {\n');
     fields.keys.forEach((key) {
       final f = fields[key];
-      final publicFieldName =
-          fixFieldName(key, typeDef: f, privateField: false);
-      final privateFieldName =
-          fixFieldName(key, typeDef: f, privateField: true);
+      final publicFieldName = fixFieldName(key, typeDef: f, privateField: false);
+      final privateFieldName = fixFieldName(key, typeDef: f, privateField: true);
       sb.write('this.$privateFieldName = $publicFieldName;\n');
     });
     sb.write('}');
@@ -281,8 +275,7 @@ class ClassDefinition {
     var len = fields.keys.length - 1;
     fields.keys.forEach((key) {
       final f = fields[key];
-      final fieldName =
-          fixFieldName(key, typeDef: f, privateField: privateFields);
+      final fieldName = fixFieldName(key, typeDef: f, privateField: privateFields);
       sb.write('this.$fieldName');
       if (i != len) {
         sb.write(', ');
@@ -306,8 +299,7 @@ class ClassDefinition {
 
   String get _jsonGenFunc {
     final sb = new StringBuffer();
-    sb.write(
-        '\tMap<String, dynamic> toJson() {\n\t\tfinal Map<String, dynamic> data = new Map<String, dynamic>();\n');
+    sb.write('\tMap<String, dynamic> toJson() {\n\t\tfinal Map<String, dynamic> data = new Map<String, dynamic>();\n');
     fields.keys.forEach((k) {
       sb.write('\t\t${fields[k].toJsonExpression(k, privateFields)}\n');
     });

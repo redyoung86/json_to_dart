@@ -1,0 +1,90 @@
+{
+  "collects": {
+    "type": "integer",
+    "format": "int64",
+    "description": "收藏"
+  },
+  "coupon": {
+    "type": "integer",
+    "format": "int64",
+    "description": "优惠券"
+  },
+  "customerLevelName": {
+    "type": "string",
+    "description": "客户等级名称"
+  },
+  "username": {
+    "type": "string",
+    "description": "会员名称"
+  },
+  "shouldCall": {
+    "type": "integer",
+    "format": "int64",
+    "description": "足迹shouldCall"
+  },
+  "url": {
+    "type": "string",
+    "description": "用户头像"
+  },
+  "lcBalance": {
+    "type": "number",
+    "description": "理财余额"
+  },
+  "luckDraw": {
+    "type": "integer",
+    "format": "int64",
+    "description": "幸运抽奖"
+  },
+  "myInvitation": {
+    "type": "integer",
+    "format": "int64",
+    "description": "我的邀请"
+  },
+  "myRank": {
+    "type": "integer",
+    "format": "int64",
+    "description": "我的排行榜"
+  },
+  "points": {
+    "type": "number",
+    "description": "银元宝"
+  },
+  "pointsMsg": {
+    "type": "string",
+    "description": "银元宝提示信息"
+  },
+  "pointsState": {
+    "type": "boolean",
+    "description": "银元宝余额状态"
+  },
+  "rankBadgeImg": {
+    "type": "string",
+    "description": "等级徽章图"
+  },
+  "starBalance": {
+    "type": "number",
+    "description": "星值余额"
+  },
+  "storedCard": {
+    "type": "integer",
+    "format": "int64",
+    "description": "储值卡"
+  },
+  "todayProfit": {
+    "type": "number",
+    "description": "今日收益"
+  },
+  "totalCommission": {
+    "type": "number",
+    "description": "总提成"
+  },
+  "unReadMsgNum": {
+    "type": "integer",
+    "format": "int64",
+    "description": "未读消息数量"
+  },
+  "yesterdayProfit": {
+    "type": "number",
+    "description": "昨日收益"
+  }
+}

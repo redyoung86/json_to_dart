@@ -231,8 +231,6 @@ class ClassDefinition {
   }
 
   String get _fieldList {
-    print("nullSafety==" + nullSafety.toString());
-
     return fields.keys.map((key) {
       final f = fields[key];
       final fieldName = fixFieldName(key, typeDef: f, privateField: privateFields);

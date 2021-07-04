@@ -139,7 +139,7 @@ class ModelGenerator {
       // print("key=" + key);
       // print(data["description"]);
 
-      _map[key] = data["description"];
+      _map[key] = data["description"].toString()?.replaceAll("\n", " ");
     });
 
     //print(jsonData);

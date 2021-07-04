@@ -34,9 +34,9 @@ main() {
   final jsonNoteData = new File(fileNotePath).readAsStringSync();
 
   // 解析 swagger properties 节点中的字段说明
-  Map<String, String> properties = classGenerator.parseToProperties(jsonNoteData);
+  Map<String, String> fieldExt = classGenerator.parseSwaggerProperties(jsonNoteData);
 
-  DartCode dartCode = classGenerator.generateDartClasses(jsonRawData, properties, nullSafety);
+  DartCode dartCode = classGenerator.generateDartClasses(jsonRawData, fieldExt, nullSafety);
 
   // 输出代码
   print(dartCode.code);

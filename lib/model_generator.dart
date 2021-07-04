@@ -39,7 +39,7 @@ class ModelGenerator {
     return this.hints.firstWhere((h) => h.path == path, orElse: () => null);
   }
 
-  List<Warning> _generateClassDefinition(String className, dynamic jsonRawDynamicData, String path, Node astNode, [Map<String, String> properties, bool nullSafety]) {
+  List<Warning> _generateClassDefinition(String className, dynamic jsonRawDynamicData, String path, Node astNode, [Map<String, String> fieldExt, bool nullSafety]) {
     List<Warning> warnings = <Warning>[];
     if (jsonRawDynamicData is List) {
       // if first element is an array, start in the first element.
@@ -49,9 +49,9 @@ class ModelGenerator {
       final Map<dynamic, dynamic> jsonRawData = jsonRawDynamicData;
       final keys = jsonRawData.keys;
 
-      Map<String, String> _properties = {};
-      if (properties != null) {
-        _properties = properties;
+      Map<String, String> _fieldExt = {};
+      if (fieldExt != null) {
+        _fieldExt = fieldExt;
       }
 
       ClassDefinition classDefinition = new ClassDefinition(className, _privateFields, nullSafety);
@@ -78,8 +78,8 @@ class ModelGenerator {
         }
 
         // 设置描述
-        if (_properties.containsKey(key)) {
-          typeDef.description = _properties[key];
+        if (_fieldExt.containsKey(key)) {
+          typeDef.description = _fieldExt[key];
         }
 
         classDefinition.addField(key, typeDef);
@@ -110,11 +110,11 @@ class ModelGenerator {
               toAnalyze = jsonRawData[dependency.name][0];
             }
             final node = navigateNode(astNode, dependency.name);
-            warns = _generateClassDefinition(dependency.className, toAnalyze, '$path/${dependency.name}', node, properties, nullSafety);
+            warns = _generateClassDefinition(dependency.className, toAnalyze, '$path/${dependency.name}', node, fieldExt, nullSafety);
           }
         } else {
           final node = navigateNode(astNode, dependency.name);
-          warns = _generateClassDefinition(dependency.className, jsonRawData[dependency.name], '$path/${dependency.name}', node, properties, nullSafety);
+          warns = _generateClassDefinition(dependency.className, jsonRawData[dependency.name], '$path/${dependency.name}', node, fieldExt, nullSafety);
         }
         if (warns != null) {
           warnings.addAll(warns);
@@ -124,8 +124,8 @@ class ModelGenerator {
     return warnings;
   }
 
-  /// 解析 swagger properties 节点中的字段说明
-  Map<String, String> parseToProperties(String jsonNoteData) {
+  /// 解析 swagger properties 节点中的字段说明(返回：<字段名称,字段说明>)
+  Map<String, String> parseSwaggerProperties(String jsonNoteData) {
     Map<String, String> _map = {};
     if (jsonNoteData == null || jsonNoteData.isEmpty) {
       return _map;
@@ -139,6 +139,7 @@ class ModelGenerator {
       // print("key=" + key);
       // print(data["description"]);
 
+      // 字段说明
       _map[key] = data["description"].toString()?.replaceAll("\n", " ");
     });
 
@@ -151,10 +152,10 @@ class ModelGenerator {
   /// in a single string. The [rawJson] param is assumed to be a properly
   /// formatted JSON string. The dart code is not validated so invalid dart code
   /// might be returned
-  DartCode generateUnsafeDart(String rawJson, [Map<String, String> properties, bool nullSafety = false]) {
+  DartCode generateUnsafeDart(String rawJson, [Map<String, String> fieldExt, bool nullSafety = false]) {
     final jsonRawData = decodeJSON(rawJson);
     final astNode = parse(rawJson, Settings());
-    List<Warning> warnings = _generateClassDefinition(_rootClassName, jsonRawData, "", astNode, properties, nullSafety);
+    List<Warning> warnings = _generateClassDefinition(_rootClassName, jsonRawData, "", astNode, fieldExt, nullSafety);
     // after generating all classes, replace the omited similar classes.
     allClasses.forEach((c) {
       final fieldsKeys = c.fields.keys;
@@ -171,8 +172,8 @@ class ModelGenerator {
   /// generateDartClasses will generate all classes and append one after another
   /// in a single string. The [rawJson] param is assumed to be a properly
   /// formatted JSON string. If the generated dart is invalid it will throw an error.
-  DartCode generateDartClasses(String rawJson, [Map<String, String> properties, bool nullSafety]) {
-    final unsafeDartCode = generateUnsafeDart(rawJson, properties, nullSafety);
+  DartCode generateDartClasses(String rawJson, [Map<String, String> fieldExt, bool nullSafety]) {
+    final unsafeDartCode = generateUnsafeDart(rawJson, fieldExt, nullSafety);
     final formatter = new DartFormatter();
     return new DartCode(formatter.format(unsafeDartCode.code), unsafeDartCode.warnings);
   }

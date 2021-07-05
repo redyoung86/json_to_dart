@@ -171,8 +171,10 @@ class ClassDefinition {
   final bool _privateFields;
   final bool _nullSafety; //是否空值安全
   final Map<String, TypeDefinition> fields = new Map<String, TypeDefinition>();
+  final String _unifiedClassCrefix;
 
-  String get name => _name;
+  // 给子类添加前缀
+  String get name => _name == _unifiedClassCrefix ? _name : _unifiedClassCrefix + _name;
   bool get privateFields => _privateFields;
   bool get nullSafety => _nullSafety;
 
@@ -188,7 +190,7 @@ class ClassDefinition {
     return dependenciesList;
   }
 
-  ClassDefinition(this._name, [this._privateFields = false, this._nullSafety = false]);
+  ClassDefinition(this._name, [this._privateFields = false, this._nullSafety = false, this._unifiedClassCrefix = ""]);
 
   bool operator ==(other) {
     if (other is ClassDefinition) {

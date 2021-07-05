@@ -27,12 +27,17 @@ class ModelGenerator {
   final Map<String, String> sameClassMapping = new HashMap<String, String>();
   List<Hint> hints;
 
+  // 给子类添加统一的前缀
+  String unifiedClassCrefix;
+
   ModelGenerator(this._rootClassName, [this._privateFields = false, hints]) {
     if (hints != null) {
       this.hints = hints;
     } else {
       this.hints = <Hint>[];
     }
+
+    unifiedClassCrefix = _rootClassName;
   }
 
   Hint _hintForPath(String path) {
@@ -54,7 +59,7 @@ class ModelGenerator {
         _fieldExt = fieldExt;
       }
 
-      ClassDefinition classDefinition = new ClassDefinition(className, _privateFields, nullSafety);
+      ClassDefinition classDefinition = new ClassDefinition(className, _privateFields, nullSafety, unifiedClassCrefix);
       keys.forEach((key) {
         TypeDefinition typeDef;
         final hint = _hintForPath('$path/$key');
@@ -65,13 +70,13 @@ class ModelGenerator {
           typeDef = new TypeDefinition.fromDynamic(jsonRawData[key], node);
         }
         if (typeDef.name == 'Class') {
-          typeDef.name = camelCase(key);
+          typeDef.name = unifiedClassCrefix + camelCase(key);
         }
         if (typeDef.name == 'List' && typeDef.subtype == 'Null') {
           warnings.add(newEmptyListWarn('$path/$key'));
         }
         if (typeDef.subtype != null && typeDef.subtype == 'Class') {
-          typeDef.subtype = camelCase(key);
+          typeDef.subtype = unifiedClassCrefix + camelCase(key);
         }
         if (typeDef.isAmbiguous) {
           warnings.add(newAmbiguousListWarn('$path/$key'));
